@@ -57,8 +57,8 @@ export default class NoteArchiverPlugin extends Plugin {
 			this.app.workspace.on("file-menu", (menu, file) => {
 				if (!file.path.startsWith(this.settings.archiveFolderName)) {
 					menu.addItem((item) => {
-						item.setTitle("📤 Archive file")
-							.setIcon("document")
+						item.setTitle("Archive file")
+							.setIcon("archive")
 							.onClick(async () => {
 								this.archivePage(file.path);
 							});
@@ -77,8 +77,8 @@ export default class NoteArchiverPlugin extends Plugin {
 						path &&
 						!path.startsWith(this.settings.archiveFolderName)
 					) {
-						item.setTitle("📤 Archive file")
-							.setIcon("document")
+						item.setTitle("Archive file")
+							.setIcon("archive")
 							.onClick(async () => {
 								this.archivePage(path ?? "");
 							});
