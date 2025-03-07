@@ -10,14 +10,19 @@ import {
 	normalizePath,
 } from "obsidian";
 
-const ARCHIVE_FOLDER_GROUPINGS = ["NoGrouping", "Year", "Month"] as const;
+const ARCHIVE_FOLDER_GROUPINGS = [
+	"NoGrouping",
+	"Year",
+	"Month",
+	"Date",
+] as const;
 type ArchiveFolderGrouping = (typeof ARCHIVE_FOLDER_GROUPINGS)[number];
 
-interface NoteArchiverSettings {
+type NoteArchiverSettings = {
 	version: string;
 	archiveFolderName: string;
 	grouping: ArchiveFolderGrouping;
-}
+};
 
 const DEFAULT_SETTINGS: NoteArchiverSettings = {
 	version: "0.1.0",
@@ -37,7 +42,7 @@ export default class NoteArchiverPlugin extends Plugin {
 			name: "Archive current note",
 			editorCheckCallback: (
 				checking: boolean,
-				editor: Editor,
+				_: Editor,
 				view: MarkdownView
 			) => {
 				if (checking) {
@@ -45,11 +50,10 @@ export default class NoteArchiverPlugin extends Plugin {
 						this.settings.archiveFolderName
 					);
 				} else {
-					if (view.file)
-						this.archivePage(view.file.path);
+					if (view.file) this.archivePage(view.file.path);
 					return true;
 				}
-			}
+			},
 		});
 
 		// on right-clicking a file
@@ -69,7 +73,7 @@ export default class NoteArchiverPlugin extends Plugin {
 
 		// on clicking the 3-dots on the top right of an editor
 		this.registerEvent(
-			this.app.workspace.on("editor-menu", (menu, editor, view) => {
+			this.app.workspace.on("editor-menu", (menu, _editor, view) => {
 				menu.addItem((item) => {
 					const path = view.file?.path;
 
@@ -117,7 +121,7 @@ export default class NoteArchiverPlugin extends Plugin {
 				});
 
 				archiveFolder = normalizePath(
-						`${this.settings.archiveFolderName}/${year}/${paddedMonthNumber}-${monthName}`
+					`${this.settings.archiveFolderName}/${year}/${paddedMonthNumber}-${monthName}`
 				);
 			}
 		}
@@ -126,14 +130,13 @@ export default class NoteArchiverPlugin extends Plugin {
 		const newPath = normalizePath(`${archiveFolder}/${path}`);
 
 		// make sure the folder for the file exists
-		const newFolder = newPath.substring(0, newPath.lastIndexOf('/'));
+		const newFolder = newPath.substring(0, newPath.lastIndexOf("/"));
 		if (this.app.vault.getAbstractFileByPath(newFolder) === null) {
 			try {
 				await this.app.vault.createFolder(newFolder);
 			} catch (error) {
 				const regex = /Folder already exists/i;
-				if (!regex.test(error))
-					throw error;
+				if (!regex.test(error)) throw error;
 			}
 		}
 
