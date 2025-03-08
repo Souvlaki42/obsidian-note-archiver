@@ -19,24 +19,39 @@ const ARCHIVE_FOLDER_GROUPINGS = [
 type ArchiveFolderGrouping = (typeof ARCHIVE_FOLDER_GROUPINGS)[number];
 
 type NoteArchiverSettings = {
-	version: string;
 	archiveFolderName: string;
 	grouping: ArchiveFolderGrouping;
 };
 
 const DEFAULT_SETTINGS: NoteArchiverSettings = {
-	version: "0.1.0",
 	archiveFolderName: "Archive",
 	grouping: "NoGrouping",
 };
 
+type NoteArchiverData = {
+	paths: { origin: string; destination: string }[];
+};
+
 export default class NoteArchiverPlugin extends Plugin {
 	settings: NoteArchiverSettings;
+	data: NoteArchiverData;
+
+	async loadData(): Promise<NoteArchiverData> {
+		this.data = await super.loadData(); // TODO: validate data
+		return this.data;
+	}
+
+	async saveData(
+		data: NoteArchiverData | NoteArchiverSettings
+	): Promise<void> {
+		await super.saveData(data);
+	}
 
 	async onload() {
 		await this.loadSettings();
+		await this.loadData();
 
-		// This adds an editor command that can perform some operation on the current editor instance
+		// This adds an editor command that archives the current note
 		this.addCommand({
 			id: "archive-current-note",
 			name: "Archive current note",
@@ -51,6 +66,26 @@ export default class NoteArchiverPlugin extends Plugin {
 					);
 				} else {
 					if (view.file) this.archivePage(view.file.path);
+					return true;
+				}
+			},
+		});
+
+		// This adds an editor command that unarchives the current note
+		this.addCommand({
+			id: "unarchive-current-note",
+			name: "Unarchive current note",
+			editorCheckCallback: (
+				checking: boolean,
+				_: Editor,
+				view: MarkdownView
+			) => {
+				if (checking) {
+					return view.file?.path.startsWith(
+						this.settings.archiveFolderName
+					);
+				} else {
+					if (view.file) this.unarchivePage(view.file.path);
 					return true;
 				}
 			},
@@ -143,7 +178,47 @@ export default class NoteArchiverPlugin extends Plugin {
 		// move the file
 		await this.app.fileManager.renameFile(targetFile, newPath);
 
+		// save paths to data
+		this.data.paths.push({ origin: path, destination: newPath });
+		await this.saveData(this.data);
+
 		new Notice(`${path} moved to ${newPath}`);
+	}
+
+	async unarchivePage(path: string) {
+		const pathIndex = this.data.paths.findIndex(
+			(p) => p.destination === path
+		);
+		if (pathIndex === -1) return;
+
+		const pathItem = this.data.paths[pathIndex];
+
+		const archivedFile = this.app.vault.getAbstractFileByPath(
+			path
+		) as TFile;
+
+		// make sure the folder for the file exists
+		const newFolder = pathItem.origin.substring(
+			0,
+			pathItem.origin.lastIndexOf("/")
+		);
+		if (this.app.vault.getAbstractFileByPath(newFolder) === null) {
+			try {
+				await this.app.vault.createFolder(newFolder);
+			} catch (error) {
+				const regex = /Folder already exists/i;
+				if (!regex.test(error)) throw error;
+			}
+		}
+
+		// move the file
+		await this.app.fileManager.renameFile(archivedFile, pathItem.origin);
+
+		// save paths to data
+		this.data.paths.remove(pathItem);
+		await this.saveData(this.data);
+
+		new Notice(`${path} moved to ${pathItem.origin}`);
 	}
 
 	async loadSettings() {

@@ -1,7 +1,7 @@
 {
 	"id": "note-archiver",
 	"name": "Note archiver",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"minAppVersion": "0.15.0",
 	"description": "Tools to archive your notes in another folder",
 	"author": "thenomadlad",
